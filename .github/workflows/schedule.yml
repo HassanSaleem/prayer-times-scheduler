@@ -1,27 +1,27 @@
-name: Check Prayer Times and Trigger Hub
-
+name: Daily Adhan Scheduler
 on:
   schedule:
-    - cron: '*/5 * * * *'  # Runs every 5 minutes
-  workflow_dispatch:       # Allows you to trigger it manually for testing
+    - cron: '0 2 * * *' # Runs at 02:00 UTC every day
+  workflow_dispatch:
 
 jobs:
-  run-scraper:
+  schedule-prayers:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
+      - name: Checkout Code
         uses: actions/checkout@v4
-
-      - name: Setup Python
+        
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-
+          python-version: '3.10'
+          
       - name: Install Dependencies
-        run: pip install requests beautifulsoup4 pytz
-
-      - name: Execute Script
+        run: pip install requests beautifulsoup4
+        
+      - name: Run Scheduler
         env:
+          QSTASH_TOKEN: ${{ secrets.QSTASH_TOKEN }}
           SMARTTHINGS_TOKEN: ${{ secrets.SMARTTHINGS_TOKEN }}
-          DEVICE_ID: ${{ secrets.DEVICE_ID }}
-        run: python scraper.py
+          SMARTTHINGS_DEVICE_ID: ${{ secrets.SMARTTHINGS_DEVICE_ID }}
+        run: python main.py
