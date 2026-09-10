@@ -43,7 +43,7 @@ def schedule_with_qstash(times):
     now = datetime.now(uk_tz)
 
     # 1. Read your region-specific URL from environment variables (or fall back to the global one)
-    qstash_base_url = os.environ.get("QSTASH_URL", "https://qstash.upstash.io")
+    qstash_base_url = os.environ.get("QSTASH_URL", "https://qstash-eu-central-1.upstash.io")
     target_url = f"https://api.smartthings.com/v1/devices/{device_id}/commands"
     qstash_publish_url = f"{qstash_base_url}/v2/publish/{target_url}"
     payload = {"commands": [{"component": "main", "capability": "switch", "command": "on"}]}
