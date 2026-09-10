@@ -3,113 +3,88 @@ import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
 import pytz
+import re
 
 def get_todays_begins_times():
-    # Using the official mirror for East London Mosque times (no Cloudflare blocking)
     url = "https://www.londonprayertimes.com/"
-    
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
-    }
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
     
     response = requests.get(url, headers=headers)
-    
     if response.status_code != 200:
         print(f"Website rejected request with status code: {response.status_code}")
         return None
         
-    soup = BeautifulSoup(response.text, "html.parser")
-    
-    # The site has a very simple table: Prayer | Start | Jama'ah
-    table = soup.find("table")
-    if not table:
-        return None
-
+    text = BeautifulSoup(response.text, "html.parser").get_text(separator=" ")
     times = {}
     
-    for row in table.find_all("tr"):
-        cols = [td.text.strip() for td in row.find_all(["td", "th"])]
-        
-        # Match the prayer names in the first column
-        if len(cols) >= 2:
-            prayer_name = cols[0].lower()
-            start_time = cols[1] # We want the 'Start' time, not the Jama'ah time
+    # Strictly look for HH:MM format (digits only) next to the prayer names
+    prayers = {
+        "fajr": r'Fajr\s+(\d{1,2}:\d{2})',
+        "zuhr": r'Dhuhr\s+(\d{1,2}:\d{2})',
+        "asr_2_mithl": r'Asr\s+(\d{1,2}:\d{2})',
+        "maghrib": r'Maghrib\s+(\d{1,2}:\d{2})',
+        "isha": r'Isha\s+(\d{1,2}:\d{2})'
+    }
+    
+    for prayer, pattern in prayers.items():
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            times[prayer] = {"time": match.group(1)}
             
-            if "fajr" in prayer_name:
-                times["fajr"] = {"time": start_time, "is_pm": False}
-            elif "dhuhr" in prayer_name:
-                times["zuhr"] = {"time": start_time, "is_pm": True}
-            elif "asr" in prayer_name:
-                times["asr_2_mithl"] = {"time": start_time, "is_pm": True}
-            elif "maghrib" in prayer_name:
-                times["maghrib"] = {"time": start_time, "is_pm": True}
-            elif "isha" in prayer_name:
-                times["isha"] = {"time": start_time, "is_pm": True}
-
-    if len(times) == 5:
-        return times
-    else:
-        print(f"Only found {len(times)} prayers: {times}")
-        return None
+    return times
 
 def schedule_with_qstash(times):
-    # Load required tokens from GitHub Actions environment
     qstash_token = os.environ.get("QSTASH_TOKEN")
     smartthings_token = os.environ.get("SMARTTHINGS_TOKEN")
     device_id = os.environ.get("DEVICE_ID")
 
     if not all([qstash_token, smartthings_token, device_id]):
-        print("Missing required environment variables (QSTASH_TOKEN, SMARTTHINGS_TOKEN, DEVICE_ID).")
+        print("Missing required environment variables. Check your GitHub Secrets!")
         return
 
     uk_tz = pytz.timezone('Europe/London')
     now = datetime.now(uk_tz)
 
-    # QStash publisher URL pointing to your SmartThings API endpoint
     target_url = f"https://api.smartthings.com/v1/devices/{device_id}/commands"
     qstash_publish_url = f"https://qstash.upstash.io/v2/publish/{target_url}"
-    
-    # Payload to turn the Virtual Switch ON
-    payload = {
-        "commands": [{"component": "main", "capability": "switch", "command": "on"}]
-    }
+    payload = {"commands": [{"component": "main", "capability": "switch", "command": "on"}]}
 
     for prayer, data in times.items():
-        # Parse 12-hour string to 24-hour datetime
-        hour, minute = map(int, data["time"].split(':'))
-        if data["is_pm"] and hour != 12:
-            hour += 12
+        try:
+            hour, minute = map(int, data["time"].split(':'))
+        except ValueError:
+            print(f"Skipping {prayer.upper()} - Invalid time format: {data['time']}")
+            continue
             
         prayer_time = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
         
-        # Skip prayers that have already passed today
         if prayer_time <= now:
-            print(f"Skipping {prayer.upper()} ({data['time']}) - Time has already passed.")
+            print(f"Skipping {prayer.upper()} ({data['time']}) - Time has already passed today.")
             continue
 
-        # Convert the exact prayer time to a UNIX timestamp for QStash
         unix_timestamp = int(prayer_time.timestamp())
-
         headers = {
             "Authorization": f"Bearer {qstash_token}",
-            "Upstash-Not-Before": str(unix_timestamp), # The exact second QStash will fire the webhook
+            "Upstash-Not-Before": str(unix_timestamp), 
             "Upstash-Forward-Authorization": f"Bearer {smartthings_token}",
             "Content-Type": "application/json"
         }
 
-        # Send scheduling request to QStash
         response = requests.post(qstash_publish_url, headers=headers, json=payload)
-        
-        if response.status_code == 201 or response.status_code == 200:
+        if response.status_code in [200, 201]:
             print(f"✅ Scheduled {prayer.upper()} at {prayer_time.strftime('%H:%M %Z')} (UNIX: {unix_timestamp})")
         else:
-            print(f"❌ Failed to schedule {prayer.upper()}: Status {response.status_code}, Response: {response.text}")
+            print(f"❌ Failed to schedule {prayer.upper()}: Status {response.status_code}")
 
 def main():
     times = get_todays_begins_times()
-    if not times:
+    if not times or len(times) == 0:
         print("Failed to scrape timetable.")
         return
+
+    print("Successfully scraped times:")
+    for p, t in times.items():
+        print(f"  {p.upper()}: {t['time']}")
 
     schedule_with_qstash(times)
 
