@@ -61,7 +61,7 @@ def schedule_with_qstash(times):
 
         try:
             # Use the SDK's publish method with headers and delay/timestamp controls
-            client.message.publish_json(
+            res = client.message.publish_json(
                 url=target_url,
                 body=payload,
                 not_before=unix_timestamp,
@@ -69,7 +69,7 @@ def schedule_with_qstash(times):
                     "Upstash-Forward-Authorization": f"Bearer {smartthings_token}"
                 }
             )
-            print(f"✅ Scheduled {prayer.upper()} at {prayer_time.strftime('%H:%M %Z')} (UNIX: {unix_timestamp})")
+            print(f"✅ Scheduled {prayer.upper()} at {prayer_time.strftime('%H:%M %Z')} (UNIX: {unix_timestamp}) (Message ID: {res.message_id})")
         except Exception as e:
             print(f"❌ Failed to schedule {prayer.upper()}: {e}")
 
