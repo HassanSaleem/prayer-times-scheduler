@@ -1,7 +1,8 @@
 import os
-import requests
 from datetime import datetime
 import pytz
+import requests
+from qstash import QStash
 
 def get_api_times():
     lpt_key = os.environ.get("LPT_API_KEY")
@@ -9,7 +10,6 @@ def get_api_times():
         print("Missing LPT_API_KEY in environment variables.")
         return None
         
-    # Call the API for today's times in 24-hour format
     url = f"https://www.londonprayertimes.com/api/times/?format=json&24hours=true&key={lpt_key}"
     response = requests.get(url)
     
@@ -19,14 +19,11 @@ def get_api_times():
         
     data = response.json()
     
-    # Map the JSON response keys to our script.
-    # Note: The API returns 'asr' (Shafi'i) and 'asr_2' (Hanafi). 
-    # Using 'asr_2' since ELM generally follows Hanafi.
     return {
         "fajr": {"time": data.get("fajr")},
         "zuhr": {"time": data.get("dhuhr")},
         "asr_2_mithl": {"time": data.get("asr_2")}, 
-        "maghrib": {"time": data.get("magrib")}, # API spells it without the 'h'
+        "maghrib": {"time": data.get("magrib")},
         "isha": {"time": data.get("isha")}
     }
 
@@ -36,16 +33,16 @@ def schedule_with_qstash(times):
     device_id = os.environ.get("DEVICE_ID")
 
     if not all([qstash_token, smartthings_token, device_id]):
-        print("Missing required environment variables (QStash or SmartThings).")
+        print("Missing required environment variables.")
         return
+
+    # Initialize the official QStash client
+    client = QStash(token=qstash_token)
 
     uk_tz = pytz.timezone('Europe/London')
     now = datetime.now(uk_tz)
 
-    # 1. Read your region-specific URL from environment variables (or fall back to the global one)
-    qstash_base_url = os.environ.get("QSTASH_URL", "https://qstash-eu-central-1.upstash.io")
     target_url = f"https://api.smartthings.com/v1/devices/{device_id}/commands"
-    qstash_publish_url = f"{qstash_base_url}/v2/publish/{target_url}"
     payload = {"commands": [{"component": "main", "capability": "switch", "command": "on"}]}
 
     for prayer, data in times.items():
@@ -60,18 +57,20 @@ def schedule_with_qstash(times):
             continue
 
         unix_timestamp = int(prayer_time.timestamp())
-        headers = {
-            "Authorization": f"Bearer {qstash_token}",
-            "Upstash-Not-Before": str(unix_timestamp), 
-            "Upstash-Forward-Authorization": f"Bearer {smartthings_token}",
-            "Content-Type": "application/json"
-        }
 
-        response = requests.post(qstash_publish_url, headers=headers, json=payload)
-        if response.status_code in [200, 201]:
+        try:
+            # Use the SDK's publish method with headers and delay/timestamp controls
+            client.message.publish_json(
+                url=target_url,
+                body=payload,
+                not_before=unix_timestamp,
+                headers={
+                    "Upstash-Forward-Authorization": f"Bearer {smartthings_token}"
+                }
+            )
             print(f"✅ Scheduled {prayer.upper()} at {prayer_time.strftime('%H:%M %Z')} (UNIX: {unix_timestamp})")
-        else:
-            print(f"❌ Failed to schedule {prayer.upper()}: Status {response.status_code}")
+        except Exception as e:
+            print(f"❌ Failed to schedule {prayer.upper()}: {e}")
 
 def main():
     times = get_api_times()
