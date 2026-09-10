@@ -24,4 +24,4 @@ jobs:
           QSTASH_TOKEN: ${{ secrets.QSTASH_TOKEN }}
           SMARTTHINGS_TOKEN: ${{ secrets.SMARTTHINGS_TOKEN }}
           SMARTTHINGS_DEVICE_ID: ${{ secrets.SMARTTHINGS_DEVICE_ID }}
-        run: python main.py
+        run: python scraper.py
