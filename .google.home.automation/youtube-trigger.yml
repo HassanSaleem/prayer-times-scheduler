@@ -15,7 +15,7 @@ automations:
         devices: Family room display - Family room
       - type: assistant.command.OkGoogle
         devices: Family room display - Family room
-        okGoogle: "Watch the playlist My Adhan Video on YouTube"
+        okGoogle: "Watch my playlist My Adhan Video on YouTube"
       - type: time.delay
         for: 10 sec
       - type: device.command.Mute # Mute or unmute the given device.
