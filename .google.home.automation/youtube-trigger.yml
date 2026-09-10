@@ -1,0 +1,27 @@
+metadata:
+  name: Play Adhan via YouTube Trigger
+  description: Plays the Adhan video on the Nest Hub when the SmartThings virtual switch turns on.
+
+automations:
+  - starters:
+      - type: device.state.OnOff
+        state: on
+        is: true
+        device: Youtube Trigger - Family room
+
+    actions:
+      - type: device.command.Mute # Mute or unmute the given device.
+        mute: true
+        devices: Family room display - Family room
+      - type: assistant.command.OkGoogle
+        devices: Family room display - Family room
+        okGoogle: "Watch the playlist My Adhan Video on YouTube"
+      - type: time.delay
+        for: 10 sec
+      - type: device.command.Mute # Mute or unmute the given device.
+        mute: false
+        devices: Family room display - Family room
+      - type: device.command.OnOff
+        on: false
+        devices:
+          - Youtube Trigger - Family room
