@@ -25,5 +25,5 @@ jobs:
           SMARTTHINGS_TOKEN: ${{ secrets.SMARTTHINGS_TOKEN }}
           DEVICE_ID: ${{ secrets.DEVICE_ID }}
           LPT_API_KEY: ${{ secrets.LPT_API_KEY }}
-          QSTASH_URL: ${{ secrets.QSTASH_URL }}
+          QSTASH_URL: ${{ vars.QSTASH_URL }}
         run: python scraper.py
