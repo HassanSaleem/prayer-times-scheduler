@@ -6,29 +6,44 @@ import pytz
 
 def get_todays_begins_times():
     url = "https://www.eastlondonmosque.org.uk/prayer-times"
-    response = requests.get(url)
+    
+    # 1. Spoof a standard web browser to bypass basic bot protection
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+    }
+    
+    response = requests.get(url, headers=headers)
+    
+    # If the website blocks us (e.g., 403 Forbidden), print the error
+    if response.status_code != 200:
+        print(f"Server rejected request with status code: {response.status_code}")
+        return None
+        
     soup = BeautifulSoup(response.text, "html.parser")
     
-    table = soup.find("table")
-    if not table:
-        return None
-    
-    # Force UK timezone
     uk_tz = pytz.timezone('Europe/London')
     today = datetime.now(uk_tz)
     today_day = str(today.day)
     
-    for row in table.find_all("tr"):
-        cols = [td.text.strip() for td in row.find_all(["td", "th"])]
-        
-        if cols and cols[0] == today_day:
-            return {
-                "fajr": {"time": cols[1], "is_pm": False},
-                "zuhr": {"time": cols[4], "is_pm": True},
-                "asr_2_mithl": {"time": cols[7], "is_pm": True},
-                "maghrib": {"time": cols[9], "is_pm": True},
-                "isha": {"time": cols[11], "is_pm": True}
-            }
+    # 2. Check all tables on the page, not just the first one
+    for table in soup.find_all("table"):
+        for row in table.find_all("tr"):
+            cols = [td.text.strip() for td in row.find_all(["td", "th"])]
+            
+            # 3. Verify the row matches today's date AND has enough columns to be the timetable
+            if cols and cols[0] == today_day and len(cols) >= 12:
+                try:
+                    return {
+                        "fajr": {"time": cols[1], "is_pm": False},
+                        "zuhr": {"time": cols[4], "is_pm": True},
+                        "asr_2_mithl": {"time": cols[7], "is_pm": True},
+                        "maghrib": {"time": cols[9], "is_pm": True},
+                        "isha": {"time": cols[11], "is_pm": True}
+                    }
+                except IndexError:
+                    # If columns are misaligned in this specific table, skip to the next
+                    continue
+                    
     return None
 
 def schedule_with_qstash(times):
