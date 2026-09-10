@@ -5,46 +5,52 @@ from datetime import datetime
 import pytz
 
 def get_todays_begins_times():
-    url = "https://www.eastlondonmosque.org.uk/prayer-times"
+    # Using the official mirror for East London Mosque times (no Cloudflare blocking)
+    url = "https://www.londonprayertimes.com/"
     
-    # 1. Spoof a standard web browser to bypass basic bot protection
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
     }
     
     response = requests.get(url, headers=headers)
     
-    # If the website blocks us (e.g., 403 Forbidden), print the error
     if response.status_code != 200:
-        print(f"Server rejected request with status code: {response.status_code}")
+        print(f"Website rejected request with status code: {response.status_code}")
         return None
         
     soup = BeautifulSoup(response.text, "html.parser")
     
-    uk_tz = pytz.timezone('Europe/London')
-    today = datetime.now(uk_tz)
-    today_day = str(today.day)
+    # The site has a very simple table: Prayer | Start | Jama'ah
+    table = soup.find("table")
+    if not table:
+        return None
+
+    times = {}
     
-    # 2. Check all tables on the page, not just the first one
-    for table in soup.find_all("table"):
-        for row in table.find_all("tr"):
-            cols = [td.text.strip() for td in row.find_all(["td", "th"])]
+    for row in table.find_all("tr"):
+        cols = [td.text.strip() for td in row.find_all(["td", "th"])]
+        
+        # Match the prayer names in the first column
+        if len(cols) >= 2:
+            prayer_name = cols[0].lower()
+            start_time = cols[1] # We want the 'Start' time, not the Jama'ah time
             
-            # 3. Verify the row matches today's date AND has enough columns to be the timetable
-            if cols and cols[0] == today_day and len(cols) >= 12:
-                try:
-                    return {
-                        "fajr": {"time": cols[1], "is_pm": False},
-                        "zuhr": {"time": cols[4], "is_pm": True},
-                        "asr_2_mithl": {"time": cols[7], "is_pm": True},
-                        "maghrib": {"time": cols[9], "is_pm": True},
-                        "isha": {"time": cols[11], "is_pm": True}
-                    }
-                except IndexError:
-                    # If columns are misaligned in this specific table, skip to the next
-                    continue
-                    
-    return None
+            if "fajr" in prayer_name:
+                times["fajr"] = {"time": start_time, "is_pm": False}
+            elif "dhuhr" in prayer_name:
+                times["zuhr"] = {"time": start_time, "is_pm": True}
+            elif "asr" in prayer_name:
+                times["asr_2_mithl"] = {"time": start_time, "is_pm": True}
+            elif "maghrib" in prayer_name:
+                times["maghrib"] = {"time": start_time, "is_pm": True}
+            elif "isha" in prayer_name:
+                times["isha"] = {"time": start_time, "is_pm": True}
+
+    if len(times) == 5:
+        return times
+    else:
+        print(f"Only found {len(times)} prayers: {times}")
+        return None
 
 def schedule_with_qstash(times):
     # Load required tokens from GitHub Actions environment
