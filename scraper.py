@@ -31,13 +31,14 @@ def schedule_with_qstash(times):
     qstash_token = os.environ.get("QSTASH_TOKEN")
     smartthings_token = os.environ.get("SMARTTHINGS_TOKEN")
     device_id = os.environ.get("DEVICE_ID")
+    qstash_url = os.environ.get("QSTASH_URL")
 
     if not all([qstash_token, smartthings_token, device_id]):
         print("Missing required environment variables.")
         return
 
     # Initialize the official QStash client
-    client = QStash(token=qstash_token)
+    client = QStash(base_url=qstash_url, token=qstash_token)
 
     uk_tz = pytz.timezone('Europe/London')
     now = datetime.now(uk_tz)
