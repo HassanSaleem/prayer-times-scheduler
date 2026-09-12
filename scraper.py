@@ -75,7 +75,7 @@ def get_smartthings_access_token():
         if new_refresh_token and new_refresh_token != refresh_token:
             logger.info("New refresh token received. Automatically updating GitHub Secret...")
             repo = os.environ.get("REPO_NAME")
-            gh_token = os.environ.get("GH_TOKEN")
+            gh_token = os.environ.get("GH_PAT")
             
             if repo and gh_token:
                 try:
