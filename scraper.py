@@ -57,6 +57,10 @@ def get_smartthings_access_token():
     }
 
     logger.info("Attempting to exchange refresh token for a new SmartThings access token...")
+
+    logger.info(f"Client ID length: {len(client_id) if client_id else 0}")
+    logger.info(f"Client Secret length: {len(client_secret) if client_secret else 0}")
+    logger.info(f"Encoded Basic Auth header preview: {encoded_credentials[:10]}...")
     response = requests.post(token_url, headers=headers, data=payload)
 
     logger.info(f"SmartThings token response status: {response.status_code}")
