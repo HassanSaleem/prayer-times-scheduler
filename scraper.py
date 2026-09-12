@@ -71,8 +71,22 @@ def get_smartthings_access_token():
         new_refresh_token = data.get("refresh_token")
         
         logger.info("Successfully generated new SmartThings access token.")
-        if new_refresh_token:
-            logger.info(f"Rotated refresh token received. Update your secret with: {new_refresh_token}")
+        if new_refresh_token and new_refresh_token != refresh_token:
+            logger.info("New refresh token received. Automatically updating GitHub Secret...")
+            repo = os.environ.get("REPO_NAME")
+            gh_token = os.environ.get("GH_TOKEN")
+            
+            if repo and gh_token:
+                try:
+                    # Automatically update the GitHub Actions secret with the rotated token
+                    subprocess.run(
+                        ["gh", "secret", "set", "ST_REFRESH_TOKEN", "--body", new_refresh_token, "--repo", repo],
+                        check=True,
+                        env={**os.environ, "GH_TOKEN": gh_token}
+                    )
+                    logger.info("Successfully updated ST_REFRESH_TOKEN secret in GitHub!")
+                except Exception as e:
+                    logger.warning(f"Failed to auto-update GitHub secret: {e}")
             
         return access_token
     else:
