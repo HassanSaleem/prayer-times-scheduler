@@ -8,6 +8,9 @@ jobs:
   schedule-prayers:
     runs-on: ubuntu-latest
     environment: PROD
+    permissions:
+      actions: write
+      contents: read
     
     steps:
       - name: Checkout Code
