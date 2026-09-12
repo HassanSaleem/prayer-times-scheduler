@@ -1,5 +1,6 @@
 import os
 import base64
+import logging
 from datetime import datetime
 import pytz
 import requests
