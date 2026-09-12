@@ -33,33 +33,42 @@ def get_smartthings_access_token():
     client_secret = os.environ.get("ST_CLIENT_SECRET")
     refresh_token = os.environ.get("ST_REFRESH_TOKEN")
 
-    credentials = f"{client_id}:{client_secret}"
-    encoded_credentials = base64.b64encode(credentials.encode()).decode()
+    if not client_id or not client_secret or not refresh_token:
+        logger.error("Missing one or more required environment variables: ST_CLIENT_ID, ST_CLIENT_SECRET, ST_REFRESH_TOKEN")
+        raise ValueError("SmartThings credentials missing from environment.")
 
-    response = requests.post(
-        "https://api.smartthings.com/v1/oauth/token",
-        headers={
-            "Authorization": f"Basic {encoded_credentials}",
-            "Content-Type": "application/x-www-form-urlencoded"
-        },
-        data={
-            "grant_type": "refresh_token",
-            "refresh_token": refresh_token,
-            "client_id": client_id
-        }
-    )
+    credentials = f"{client_id}:{client_secret}"
+    encoded_credentials = base64.b64encode(credentials.encode("utf-8")).decode("utf-8")
+
+    token_url = "https://api.smartthings.com/v1/oauth/token"
+    headers = {
+        "Authorization": f"Basic {encoded_credentials}",
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Accept": "application/json"
+    }
+    payload = {
+        "grant_type": "refresh_token",
+        "refresh_token": refresh_token,
+        "client_id": client_id
+    }
+
+    logger.info("Attempting to exchange refresh token for a new SmartThings access token...")
+    response = requests.post(token_url, headers=headers, data=payload)
+
+    logger.info(f"SmartThings token response status: {response.status_code}")
 
     if response.status_code == 200:
         data = response.json()
-        new_access_token = data.get("access_token")
+        access_token = data.get("access_token")
         new_refresh_token = data.get("refresh_token")
         
-        # Print out the new refresh token so you can update your GitHub secret if it rotates
-        print(f"🔄 SmartThings Token Refreshed Successfully!")
-        print(f"⚠️ NEW_REFRESH_TOKEN (Save this if running manually): {new_refresh_token}")
-        
-        return new_access_token
+        logger.info("Successfully generated new SmartThings access token.")
+        if new_refresh_token:
+            logger.info(f"Rotated refresh token received. Update your secret with: {new_refresh_token}")
+            
+        return access_token
     else:
+        logger.error(f"Token refresh failed. Response text: {response.text}")
         raise Exception(f"HTTP {response.status_code} - Failed to refresh SmartThings token: {response.text}")
 
 def schedule_with_qstash(times):
