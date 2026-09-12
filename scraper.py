@@ -5,6 +5,9 @@ import pytz
 import requests
 from qstash import QStash
 
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+
 def get_api_times():
     lpt_key = os.environ.get("LPT_API_KEY")
     if not lpt_key:
