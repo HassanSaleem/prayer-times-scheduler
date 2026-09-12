@@ -51,11 +51,16 @@ def get_smartthings_access_token():
 
     if response.status_code == 200:
         data = response.json()
-        # Note: SmartThings issues a new refresh token on every use. 
-        # If running in GitHub Actions, you can print or log it, or use a persistent store if hosted elsewhere.
-        return data.get("access_token")
+        new_access_token = data.get("access_token")
+        new_refresh_token = data.get("refresh_token")
+        
+        # Print out the new refresh token so you can update your GitHub secret if it rotates
+        print(f"🔄 SmartThings Token Refreshed Successfully!")
+        print(f"⚠️ NEW_REFRESH_TOKEN (Save this if running manually): {new_refresh_token}")
+        
+        return new_access_token
     else:
-        raise Exception(f"Failed to refresh SmartThings token: {response.text}")
+        raise Exception(f"HTTP {response.status_code} - Failed to refresh SmartThings token: {response.text}")
 
 def schedule_with_qstash(times):
     qstash_token = os.environ.get("QSTASH_TOKEN")
