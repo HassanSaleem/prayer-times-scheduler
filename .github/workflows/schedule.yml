@@ -34,5 +34,6 @@ jobs:
           ST_CLIENT_SECRET: ${{secrets.ST_CLIENT_SECRET}}
           ST_REFRESH_TOKEN: ${{secrets.ST_REFRESH_TOKEN}}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_PAT: ${{secrets.GH_PAT}}
           REPO_NAME: ${{ github.repository }}
         run: python scraper.py
