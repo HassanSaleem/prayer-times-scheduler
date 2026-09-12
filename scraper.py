@@ -41,8 +41,8 @@ def get_smartthings_access_token():
         logger.error("Missing one or more required environment variables: ST_CLIENT_ID, ST_CLIENT_SECRET, ST_REFRESH_TOKEN")
         raise ValueError("SmartThings credentials missing from environment.")
 
-    credentials = f"{client_id}:{client_secret}"
-    encoded_credentials = base64.b64encode(credentials.encode("utf-8")).decode("utf-8")
+    credentials = f"{client_id.strip()}:{client_secret.strip()}"
+    encoded_credentials = base64.b64encode(credentials.encode("ascii")).decode("ascii").strip()
 
     token_url = "https://api.smartthings.com/v1/oauth/token"
     headers = {
