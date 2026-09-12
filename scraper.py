@@ -1,4 +1,5 @@
 import os
+import base64
 from datetime import datetime
 import pytz
 import requests
@@ -27,9 +28,38 @@ def get_api_times():
         "isha": {"time": data.get("isha")}
     }
 
+def get_smartthings_access_token():
+    client_id = os.environ.get("ST_CLIENT_ID")
+    client_secret = os.environ.get("ST_CLIENT_SECRET")
+    refresh_token = os.environ.get("ST_REFRESH_TOKEN")
+
+    credentials = f"{client_id}:{client_secret}"
+    encoded_credentials = base64.b64encode(credentials.encode()).decode()
+
+    response = requests.post(
+        "https://api.smartthings.com/v1/oauth/token",
+        headers={
+            "Authorization": f"Basic {encoded_credentials}",
+            "Content-Type": "application/x-www-form-urlencoded"
+        },
+        data={
+            "grant_type": "refresh_token",
+            "refresh_token": refresh_token,
+            "client_id": client_id
+        }
+    )
+
+    if response.status_code == 200:
+        data = response.json()
+        # Note: SmartThings issues a new refresh token on every use. 
+        # If running in GitHub Actions, you can print or log it, or use a persistent store if hosted elsewhere.
+        return data.get("access_token")
+    else:
+        raise Exception(f"Failed to refresh SmartThings token: {response.text}")
+
 def schedule_with_qstash(times):
     qstash_token = os.environ.get("QSTASH_TOKEN")
-    smartthings_token = os.environ.get("SMARTTHINGS_TOKEN")
+    smartthings_token = get_smartthings_access_token()
     device_id = os.environ.get("DEVICE_ID")
     qstash_url = os.environ.get("QSTASH_URL")
 
