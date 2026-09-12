@@ -72,7 +72,7 @@ def get_smartthings_access_token():
             
         return access_token
     else:
-        logger.error(f"Token refresh failed. Response text: {response.text}")
+        logger.error(f"Token refresh failed. Response text: {repr(response.text)}")
         raise Exception(f"HTTP {response.status_code} - Failed to refresh SmartThings token: {response.text}")
 
 def schedule_with_qstash(times):
